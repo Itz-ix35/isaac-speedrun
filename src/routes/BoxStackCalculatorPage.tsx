@@ -12,12 +12,13 @@ type AdvantageEdge = {
   toId: string;
   fromWins: number;
   toWins: number;
+  totalMatches: number;
 };
 
 type SearchResult =
   | { status: "idle" }
   | { status: "missing"; playerAInput: string; playerBInput: string; playerA?: Player; playerB?: Player }
-  | { status: "found"; chain: string[]; edges: AdvantageEdge[] }
+  | { status: "found"; chain: string[]; edges: AdvantageEdge[]; bottleneckMatches: number }
   | { status: "not-found"; playerA: Player; playerB: Player };
 
 const findPlayer = (data: AppData, value: string) => {
@@ -52,50 +53,72 @@ const buildAdvantageGraph = (matches: Match[]) => {
     const playerAWins = counts.get(playerAId) ?? 0;
     const playerBWins = counts.get(playerBId) ?? 0;
     if (playerAWins === playerBWins) continue;
+    const totalMatches = playerAWins + playerBWins;
 
     const edge =
       playerAWins > playerBWins
-        ? { fromId: playerAId, toId: playerBId, fromWins: playerAWins, toWins: playerBWins }
-        : { fromId: playerBId, toId: playerAId, fromWins: playerBWins, toWins: playerAWins };
+        ? { fromId: playerAId, toId: playerBId, fromWins: playerAWins, toWins: playerBWins, totalMatches }
+        : { fromId: playerBId, toId: playerAId, fromWins: playerBWins, toWins: playerAWins, totalMatches };
     const edges = graph.get(edge.fromId) ?? [];
     edges.push(edge);
     graph.set(edge.fromId, edges);
+  }
+
+  for (const edges of graph.values()) {
+    edges.sort((a, b) => b.totalMatches - a.totalMatches || b.fromWins - a.fromWins || a.toId.localeCompare(b.toId));
   }
 
   return graph;
 };
 
 const findAdvantageChain = (graph: Map<string, AdvantageEdge[]>, startId: string, endId: string) => {
-  if (startId === endId) return { chain: [startId], edges: [] };
+  if (startId === endId) return { chain: [startId], edges: [], bottleneckMatches: Infinity };
 
-  const visited = new Set([startId]);
-  const queue = [startId];
+  const bestBottleneck = new Map<string, number>([[startId, Infinity]]);
+  const bestHops = new Map<string, number>([[startId, 0]]);
   const previous = new Map<string, { playerId: string; edge: AdvantageEdge }>();
+  const unsettled = new Set<string>([startId]);
 
-  for (let index = 0; index < queue.length; index += 1) {
-    const currentId = queue[index];
+  while (unsettled.size > 0) {
+    const currentId = Array.from(unsettled).sort((a, b) => {
+      const bottleneckDiff = (bestBottleneck.get(b) ?? 0) - (bestBottleneck.get(a) ?? 0);
+      if (bottleneckDiff !== 0) return bottleneckDiff;
+      return (bestHops.get(a) ?? Infinity) - (bestHops.get(b) ?? Infinity);
+    })[0];
+    unsettled.delete(currentId);
+    if (currentId === endId) break;
+
+    const currentBottleneck = bestBottleneck.get(currentId) ?? 0;
+    const currentHops = bestHops.get(currentId) ?? 0;
     for (const edge of graph.get(currentId) ?? []) {
-      if (visited.has(edge.toId)) continue;
-      visited.add(edge.toId);
-      previous.set(edge.toId, { playerId: currentId, edge });
-      if (edge.toId === endId) {
-        const chain = [endId];
-        const edges: AdvantageEdge[] = [];
-        let cursor = endId;
-        while (cursor !== startId) {
-          const item = previous.get(cursor);
-          if (!item) break;
-          edges.unshift(item.edge);
-          chain.unshift(item.playerId);
-          cursor = item.playerId;
-        }
-        return { chain, edges };
+      const nextBottleneck = Math.min(currentBottleneck, edge.totalMatches);
+      const existingBottleneck = bestBottleneck.get(edge.toId) ?? 0;
+      const nextHops = currentHops + 1;
+      const existingHops = bestHops.get(edge.toId) ?? Infinity;
+      if (nextBottleneck > existingBottleneck || (nextBottleneck === existingBottleneck && nextHops < existingHops)) {
+        bestBottleneck.set(edge.toId, nextBottleneck);
+        bestHops.set(edge.toId, nextHops);
+        previous.set(edge.toId, { playerId: currentId, edge });
+        unsettled.add(edge.toId);
       }
-      queue.push(edge.toId);
     }
   }
 
-  return null;
+  const bottleneckMatches = bestBottleneck.get(endId);
+  if (!bottleneckMatches) return null;
+
+  const chain = [endId];
+  const edges: AdvantageEdge[] = [];
+  let cursor = endId;
+  while (cursor !== startId) {
+    const item = previous.get(cursor);
+    if (!item) return null;
+    edges.unshift(item.edge);
+    chain.unshift(item.playerId);
+    cursor = item.playerId;
+  }
+
+  return { chain, edges, bottleneckMatches };
 };
 
 export default function BoxStackCalculatorPage({ data }: Props) {
@@ -159,14 +182,17 @@ export default function BoxStackCalculatorPage({ data }: Props) {
         <div className="chain-result">
           <div className="section-heading">
             <h2>计算结果</h2>
-            <p>{result.chain.map(getPlayerName).join(" → ")}</p>
+            <p>
+              {result.chain.map(getPlayerName).join(" → ")}
+              {Number.isFinite(result.bottleneckMatches) && `，瓶颈边共 ${result.bottleneckMatches} 场`}
+            </p>
           </div>
           <ol className="chain-steps">
             {result.edges.map((edge) => (
               <li key={`${edge.fromId}-${edge.toId}`}>
                 <strong>{getPlayerName(edge.fromId)}</strong>
                 <span>
-                  {edge.fromWins}:{edge.toWins} 优
+                  {edge.fromWins}:{edge.toWins} 优，共 {edge.totalMatches} 场
                 </span>
                 <strong>{getPlayerName(edge.toId)}</strong>
               </li>
