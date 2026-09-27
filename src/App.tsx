@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { CalendarDays, Info, ListChecks, Scale, Shield, Swords, Users } from "lucide-react";
+import { CalendarDays, Info, Layers, ListChecks, Scale, Shield, Swords, Users } from "lucide-react";
 import aboutContent from "../about.md?raw";
 import todoContent from "../tdl.md?raw";
 import { loadData } from "./data/loadData";
 import ArenaPage from "./routes/ArenaPage";
+import BoxStackCalculatorPage from "./routes/BoxStackCalculatorPage";
 import CompetitionPage from "./routes/CompetitionPage";
 import FullBracketPage from "./routes/FullBracketPage";
 import MarkdownPage from "./routes/MarkdownPage";
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/matches", label: "对局", icon: Swords },
   { to: "/players", label: "选手", icon: Users },
   { to: "/players/compare", label: "战绩对比", icon: Scale },
+  { to: "/players/box-stack", label: "叠盒子计算器", icon: Layers },
   { to: "/todo", label: "To do list", icon: ListChecks }
 ];
 
@@ -85,6 +87,7 @@ export default function App() {
             <Route path="/matches" element={<MatchesPage data={data} />} />
             <Route path="/players" element={<PlayersPage data={data} />} />
             <Route path="/players/compare" element={<PlayerComparePage data={data} />} />
+            <Route path="/players/box-stack" element={<BoxStackCalculatorPage data={data} />} />
             <Route path="/players/:playerId" element={<PlayerDetailPage data={data} />} />
             <Route path="/todo" element={<MarkdownPage title="To do list" content={todoContent} />} />
           </Routes>

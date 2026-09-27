@@ -368,6 +368,23 @@ main {
   padding: 8px 18px;
 }
 
+.box-stack-form {
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto;
+}
+
+.compare-form .swap-button {
+  background: #ffffff;
+  border: 1px solid #cbd5df;
+  color: #344454;
+  font-size: 20px;
+  min-width: 42px;
+  padding: 6px 10px;
+}
+
+.compare-form .swap-button:hover {
+  background: #f1f7fa;
+}
+
 .compare-summary {
   align-items: center;
   background: #ffffff;
@@ -444,6 +461,36 @@ main {
   color: #738496;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 11px;
+}
+
+.chain-result {
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.chain-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.chain-steps li {
+  color: #344454;
+  line-height: 1.6;
+}
+
+.chain-steps strong {
+  color: #1f2933;
+}
+
+.chain-steps span {
+  color: #0f6b8f;
+  margin: 0 8px;
 }
 
 .field,
